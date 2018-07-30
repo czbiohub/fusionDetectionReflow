@@ -76,16 +76,16 @@ def findHitSeqs(fileName):
 #
 #/////////////////////////////////////////////////////////////////////
 
-PATH = '/home/ubuntu/expansionVol/03-fusionPipeline/04-possible_alk_fusion'
+PATH = '/path/to/current/dir'
 
 for dir in os.listdir(PATH):
 	dirPath = PATH + '/' + dir
-	#print(dirPath)
 	try:
-		f1 = dirPath + '/' + 'trim33_R1_blastOut'
-		f2 = dirPath + '/' + 'trim33_R2_blastOut'
-		f3 = dirPath + '/' + 'ret_R1_blastOut'
-		f4 = dirPath + '/' + 'ret_R2_blastOut'
+		# where Alk/Eml4 are your fusion partners
+		f1 = dirPath + '/' + 'alk_R1_blastOut'
+		f2 = dirPath + '/' + 'alk_R2_blastOut'
+		f3 = dirPath + '/' + 'eml4_R1_blastOut'
+		f4 = dirPath + '/' + 'eml4_R2_blastOut'
 	
 		f1Hits = []
 		f2Hits = []

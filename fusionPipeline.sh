@@ -9,29 +9,32 @@
 # This is a pipeline for generating all of the BLAST output files 
 # needed by findChimericReads.py. Launches 20 threads to massively
 # speed things up. Be careful, though, needs a machine with a lot of
-# cores & swap space
+# cores & swap space.
+#
+# Also keep in mind that you need a querySeqs dir containing actual
+# .fa sequences for each of you genes of interest
 #/////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////
 #!/bin/bash
 
 #/////////////////////////////////////////////////////////////////////
 # blastn_func ()
-# 
+# 	Runs the actual BLASTn
 #/////////////////////////////////////////////////////////////////////
 blastn_func () {
 	declare -a genesList=("alk" "ccdc6" "cd74" "cltc" "eml4" "ezr" "met" "ntrk2" "prkcb" "ret" "ros1" "rps6kb1" "slc34a2" "spns1" "strn" "tfg" "trim24" "trim33" "tubd1")
 
 	for i in "${genesList[@]}"
 	do
-		blastn -db ${dir}/R1.fasta -query ../03-fusionPipeline/querySeqs/${i}_human_ucsc.fa -out ${dir}/${i}_R1_blastOut
-		blastn -db ${dir}/R2.fasta -query ../03-fusionPipeline/querySeqs/${i}_human_ucsc.fa -out ${dir}/${i}_R2_blastOut
+		blastn -db ${dir}/R1.fasta -query /path/to/querySeqsDir/${i}_human_ucsc.fa -out ${dir}/${i}_R1_blastOut
+		blastn -db ${dir}/R2.fasta -query /path/to/querySeqsDir/${i}_human_ucsc.fa -out ${dir}/${i}_R2_blastOut
 	done
 
 }
 
 #/////////////////////////////////////////////////////////////////////
 # make_blast_db_func ()
-# 
+# 	Sets up BLAST database for each .fasta
 #/////////////////////////////////////////////////////////////////////
 make_blast_db_func () {
 	file1=${dir}/R1.fasta
@@ -43,7 +46,7 @@ make_blast_db_func () {
 
 #/////////////////////////////////////////////////////////////////////
 # fastq_to_fasta_func ()
-# 
+# 	Converts to .fasta, to allow for BLASTn
 #/////////////////////////////////////////////////////////////////////
 fastq_to_fasta_func () {
 	file1=${dir}/*R1_001.fastq
@@ -55,7 +58,7 @@ fastq_to_fasta_func () {
 
 #/////////////////////////////////////////////////////////////////////
 # gunzip_func ()
-# 
+# 	Unzips gzipped files
 #/////////////////////////////////////////////////////////////////////
 gunzip_func () {
 	gunzip ${dir}/*.gz
@@ -79,13 +82,14 @@ driver () {
 #	(limited to 20), then call driver function. 
 #/////////////////////////////////////////////////////////////////////
 
-currPath=/home/ubuntu/expansionVol/03-fusionPipeline
+currPath=/path/to/current/dir
  
 i=0
 
 # initiate main loop
-for dir in ${currPath}/04-possible_alk_fusion/*; 
+for dir in ${currPath}/directoryWithCells/*; 
 do 
+	# launch a new thread for each iteration of loop
 	driver "$dir" & 
 	# Limit to X concurrent subshells.
 	if (( $i % 32 == 0 )); 
