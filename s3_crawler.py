@@ -131,8 +131,8 @@ def driverLoop(pList, tcSet, cBucket):
   
 global dest_bucket
 
-cellFile = getTCellFile("/path/to/cellNamesFile.csv")
-cellSet = getTCellSet(cellFile)
+cellFile = getCellFile("/path/to/cellNamesFile.csv")
+cellSet = getCellSet(cellFile)
 dest_bucket = 'test/'
 
 inputFile = sys.argv[1]
