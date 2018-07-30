@@ -2,7 +2,7 @@
 ## Fusion Detection Reflow
 
 *August 2018*                 
-*Authors: * Lincoln Harris & Gerry Meixiong                   
+*Authors:* Lincoln Harris & Gerry Meixiong                   
 
 Collection of scripts for detecting fusion transcripts from scRNA-seq data. Hoping to add REFLOW functionality. 
 
