@@ -10,7 +10,7 @@
 # 6.27: This has been optimized for parallel processing with GNU parallel. 
 # Assuming you have GNU parallel installed, run like so:
 #
-#		parallel python3 s3_tranfer_ashley_cells.py ::: prefixList.csv
+#		parallel python3 s3_crawler ::: prefixList.csv
 #
 # where prefixList.csv is a file containing all of the s3 prefixes
 # you want to search through
@@ -24,13 +24,13 @@ import csv
 import sys
 
 #////////////////////////////////////////////////////////////////////
-# getTCellFile()
+# getCellFile()
 #	args: myPath -> raw os path to tCell local file of interest (.csv)
 #	returns: fPath -> python path to file of interest
 #
-# 	Just letting python know where our tCellFile is found
+# 	Just letting python know where our cellFile is found
 #////////////////////////////////////////////////////////////////////
-def getTCellFile(myPath):
+def getCellFile(myPath):
     # the actual file name
 	fName = os.path.basename(myPath) 
     # the short path to that file
@@ -41,15 +41,15 @@ def getTCellFile(myPath):
 	return fPath
 
 #////////////////////////////////////////////////////////////////////
-# getTCellSet()
+# getCellSet()
 #	args: myFile -> complete path to a local file (.csv) containing all
 #					of the tCells we're interested in grabbing. 
 #	returns: tSet -> a set (like a list, but hashed) of all the items
 #				     in the input file
 #	
-#	Defining a set of all our tCells. 
+#	Defining a set of all our query cells. 
 #////////////////////////////////////////////////////////////////////
-def getTCellSet(myFile):
+def getCellSet(myFile):
 	with open(myFile) as f:
 		rdr = csv.reader(f)
 		tSet = set()
@@ -96,12 +96,12 @@ def engine(myPrefix, myTCellSet, myBucket):
 #	Peforms the actual move, from one s3 bucket to another
 #////////////////////////////////////////////////////////////////////
 def moveFiles(mv, rs, source_prefix):
-	s3_util.copy_files(mv, rs, source_prefix, 'darmanis-group', n_proc=16)
+	s3_util.copy_files(mv, rs, source_prefix, 'lincoln.harris-reflow', n_proc=16)
 
 #////////////////////////////////////////////////////////////////////
 # driverLoop()
 #	args: pList -> list of prefixes w/in a parent s3 bucket
-#		  tcSet -> set of tCells to search for
+#		  tcSet -> set of cells to search for
 #		  cBucket -> parent s3 bucket
 #	returns: NONE	
 # 
@@ -116,13 +116,13 @@ def driverLoop(pList, tcSet, cBucket):
 		results_files = driver_out[1]
 		print(len(files_to_move))
 		print("moving...")
-		#moveFiles(files_to_move, results_files, cBucket)
+		moveFiles(files_to_move, results_files, cBucket)
 	return
 
 #////////////////////////////////////////////////////////////////////
 # main()
 # 
-#	scaffold for initiating lists & loops. Calls getTCellFile() and 
+#	scaffold for initiating lists & loops. Calls getCellFile() and 
 # 	getTCellSet() to define list of tCells to search for, then defines 
 # 	lists of s3 prefixes to search our three parent s3 buckets for. 
 # 	Then calls driverLoop to do all of the actual work. 
@@ -131,10 +131,9 @@ def driverLoop(pList, tcSet, cBucket):
   
 global dest_bucket
 
-tCellFile = getTCellFile("/home/ubuntu/expansionVol/03-fusionPipeline/01-transferCells_epithelial/epithelial.csv")
-tCellSet = getTCellSet(tCellFile)
-#dest_bucket = 'singlecell_lungadeno/test/'
-dest_bucket = 'singlecell_lungadeno/epithelial/'
+cellFile = getTCellFile("/path/to/cellNamesFile.csv")
+cellSet = getTCellSet(cellFile)
+dest_bucket = 'test/'
 
 inputFile = sys.argv[1]
 
