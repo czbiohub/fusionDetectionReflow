@@ -96,7 +96,7 @@ def engine(myPrefix, myTCellSet, myBucket):
 #	Peforms the actual move, from one s3 bucket to another
 #////////////////////////////////////////////////////////////////////
 def moveFiles(mv, rs, source_prefix):
-	s3_util.copy_files(mv, rs, source_prefix, 'lincoln.harris-reflow', n_proc=16)
+	s3_util.copy_files(mv, rs, source_prefix, sys.argv[3], n_proc=16)
 
 #////////////////////////////////////////////////////////////////////
 # driverLoop()
@@ -131,9 +131,9 @@ def driverLoop(pList, tcSet, cBucket):
   
 global dest_bucket
 
-cellFile = getCellFile("/path/to/cellNamesFile.csv")
-cellSet = getCellSet(cellFile)
-dest_bucket = 'test/'
+# cellFile = getTCellFile("/path/to/cellNamesFile.csv")
+cellSet = getTCellSet(sys.argv[2])
+dest_bucket = 'chimerCellFiles/'
 
 inputFile = sys.argv[1]
 

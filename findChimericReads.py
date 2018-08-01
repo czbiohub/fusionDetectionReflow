@@ -2,20 +2,21 @@
 #/////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////
-# script: findChimericReads_mods.py
-# author: Lincoln Harris
-# date: 7/4/18
+# script: findChimericReads.py
+# author: Lincoln Harris, Gerry Meixiong
+# date: 8/1/18
 #
-# This script searches a directory full of BLAST output files and returns
-# the names of cells that contain chimeric reads ie. cells such that for
-# a given read pair, one read matches geneA, and the other matches geneB.
-# Right now configured for Alk/Eml4 searches. 
+# This script searches a directory full of BLAST output files and writes
+# files with the names of cells that contain chimeric reads ie. cells such 
+# that for a given read pair, one read matches geneA, and the other matches 
+# geneB. Does so for each possible pair of genes.
 #
 #/////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////
 import os
 import io
 import sys
+import itertools
 
 #/////////////////////////////////////////////////////////////////////
 # findReadPairs(): Searches for common elements between two lists
@@ -27,18 +28,8 @@ import sys
 #/////////////////////////////////////////////////////////////////////
 def findReadPairs(l1, l2):
 
-	l1_new = []
-	for line1 in l1:
-		newLine1 = line1.split(" ")[0]
-		l1_new.append(newLine1)
-
-	l2_new = []
-	for line2 in l2:
-		newLine2 = line2.split(" ")[0]
-		l2_new.append(newLine2)
-
-	l1_set = set(l1_new)
-	l2_set = set(l2_new)
+	l1_set = set([line.split(" ")[0] for line in l1])
+	l2_set = set([line.split(" ")[0] for line in l2])
 
 	shared = l1_set.intersection(l2_set)
 
@@ -76,49 +67,41 @@ def findHitSeqs(fileName):
 #
 #/////////////////////////////////////////////////////////////////////
 
-PATH = '/path/to/current/dir'
+blast_dir = sys.argv[1]
+outdir = sys.argv[2]
 
-for dir in os.listdir(PATH):
-	dirPath = PATH + '/' + dir
-	try:
-		# where Alk/Eml4 are your fusion partners
-		f1 = dirPath + '/' + 'alk_R1_blastOut'
-		f2 = dirPath + '/' + 'alk_R2_blastOut'
-		f3 = dirPath + '/' + 'eml4_R1_blastOut'
-		f4 = dirPath + '/' + 'eml4_R2_blastOut'
-	
+geneList = ["alk", "ccdc6", "cd74", "cltc", "eml4", "ezr", "met", "ntrk2", "prkcb", "ret", "ros1", "rps6kb1", "slc34a2", "spns1", "strn", "tfg", "trim24", "trim33", "tubd1"]
+
+for gene1, gene2 in itertools.combinations(geneList, 2):
+	for cellDir in os.listdir(blast_dir):
+		f1 = blast_dir + '/' + cellDir + '/' + gene1 + '_R1_blastOut'
+		f2 = blast_dir + '/' + cellDir + '/' + gene1 + '_R2_blastOut'
+		f3 = blast_dir + '/' + cellDir + '/' + gene2 + '_R1_blastOut'
+		f4 = blast_dir + '/' + cellDir + '/' + gene2 + '_R2_blastOut'
+
 		f1Hits = []
 		f2Hits = []
 		f3Hits = []
 		f4Hits = []
 
-		try:
-			if 'Sequences producing significant alignments:' in open(f1).read():
-				f1Hits = findHitSeqs(f1)
-			if 'Sequences producing significant alignments:' in open(f2).read():
-				f2Hits = findHitSeqs(f2)
-			if 'Sequences producing significant alignments:' in open(f3).read(): 
-				f3Hits = findHitSeqs(f3)
-			if 'Sequences producing significant alignments:' in open(f4).read(): 
-				f4Hits = findHitSeqs(f4)
-
-		except NotADirectoryError:
-			continue
+		if 'Sequences producing significant alignments:' in open(f1).read():
+			f1Hits = findHitSeqs(f1)
+		if 'Sequences producing significant alignments:' in open(f2).read():
+			f2Hits = findHitSeqs(f2)
+		if 'Sequences producing significant alignments:' in open(f3).read(): 
+			f3Hits = findHitSeqs(f3)
+		if 'Sequences producing significant alignments:' in open(f4).read(): 
+			f4Hits = findHitSeqs(f4)
 
 		g1_hits = f1Hits + f2Hits
 		g2_hits = f3Hits + f4Hits
 
 		chimReads = findReadPairs(g1_hits, g2_hits)
 		if(chimReads):
-			print(" ")
-			print("Found %d chimeric reads found in cell %s" % (len(chimReads), dir))
-			print(chimReads)
-
-	except FileNotFoundError:
-		print("BLAST out file not found for cell %s" % dir)
-		continue	
-
-print(" ")
+			with open(outdir+"/" + gene1+"_"+gene2+"_pairs.txt", 'a') as f:
+				f.write("Found %d chimeric reads for cell %s\n" % (len(chimReads), cellDir))
+				for read in chimReads:
+					f.write('\t' + read +"\n")
 
 #/////////////////////////////////////////////////////////////////////
 #/////////////////////////////////////////////////////////////////////
