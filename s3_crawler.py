@@ -108,16 +108,16 @@ def moveFiles(mv, rs, source_prefix):
 #	Main logic here. Calls engine() to find files to move within query
 #	bucket, then calls moveFiles() to do the move. 
 #////////////////////////////////////////////////////////////////////
-def driverLoop(pList, tcSet, cBucket):
-	for i in range(len(pList)):
-		currPre = pList[i]
-		driver_out = engine(currPre, tcSet, cBucket)
-		files_to_move = driver_out[0]
-		results_files = driver_out[1]
-		print(len(files_to_move))
-		print("moving...")
-		moveFiles(files_to_move, results_files, cBucket)
-	return
+def driverLoop(prefix, tcSet, cBucket):
+	# for i in range(len(pList)):
+	# currPre = pList[i]
+	driver_out = engine(prefix, tcSet, cBucket)
+	files_to_move = driver_out[0]
+	results_files = driver_out[1]
+	print(len(files_to_move))
+	print("moving...")
+	moveFiles(files_to_move, results_files, cBucket)
+	# return
 
 #////////////////////////////////////////////////////////////////////
 # main()
@@ -135,17 +135,17 @@ global dest_bucket
 cellSet = getTCellSet(sys.argv[2])
 dest_bucket = 'chimerCellFiles/'
 
-inputFile = sys.argv[1]
+# inputFile = sys.argv[1]
 
-prefixList = []
-with open(inputFile) as f:
-	input_rdr = csv.reader(f)
-	for item in input_rdr:
-		prefixList.append(item[0])
+# prefixList = []
+# with open(inputFile) as f:
+# 	input_rdr = csv.reader(f)
+# 	for item in input_rdr:
+# 		prefixList.append(item[0])
 
 print(" ")
 print("STARTING")
-driverLoop(prefixList, tCellSet, 'czbiohub-seqbot')
+driverLoop(sys.argv[1], tCellSet, 'czbiohub-seqbot')
 print("done!")
 
 #////////////////////////////////////////////////////////////////////
