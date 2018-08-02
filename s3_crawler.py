@@ -26,7 +26,6 @@ import multiprocessing
 import boto3
 import botocore.exceptions
 
-
 def prefix_gen(bucket, prefix, fn=None):
     """Generic generator of fn(result) from an S3 paginator"""
     client = boto3.client('s3')
@@ -45,7 +44,6 @@ def get_files(bucket=None, prefix=None):
     # """Generator of keys for a given S3 prefix"""
     yield from prefix_gen(bucket, prefix, lambda r: r['Key'])
 
-
 def copy_file(k):
     key, new_key = k
     try:
@@ -54,7 +52,6 @@ def copy_file(k):
         s3c.copy(CopySource={'Bucket': bucket, 'Key': key},
                  Bucket=new_bucket,
                  Key=new_key)
-
 
 def copy_files(src_list, dest_list, b, nb, n_proc=16):
     """
@@ -77,8 +74,6 @@ def copy_files(src_list, dest_list, b, nb, n_proc=16):
     finally:
         p.close()
         p.join()
-
-
 
 #////////////////////////////////////////////////////////////////////
 # getCellFile()
@@ -131,14 +126,15 @@ def engine(myPrefix, myTCellSet, myBucket):
 	res_files = []
 	for query_dir in get_files(bucket=myBucket, prefix=myPrefix):
 		dir_split = query_dir.split("/")
-		query_cell_extra = dir_split[3]
-		query_cell_extra_split = query_cell_extra.split("_")
-		query_cell = query_cell_extra_split[0] + '_' + query_cell_extra_split[1]
-		#print(query_cell)
-		if query_cell in myTCellSet:
-			f_to_move.append(query_dir)
-			myStr = dest_bucket + query_cell + '/' + dir_split[4]
-			res_files.append(myStr)
+		if len(dir_split) > 3:
+			query_cell_extra = dir_split[3]
+			query_cell_extra_split = query_cell_extra.split("_")
+			query_cell = query_cell_extra_split[0] + '_' + query_cell_extra_split[1]
+			#print(query_cell)
+			if query_cell in myTCellSet:
+				f_to_move.append(query_dir)
+				myStr = dest_bucket + query_cell + '/' + dir_split[4]
+				res_files.append(myStr)
     
 	return f_to_move, res_files
 
@@ -165,8 +161,9 @@ def moveFiles(mv, rs, source_prefix):
 #	bucket, then calls moveFiles() to do the move. 
 #////////////////////////////////////////////////////////////////////
 def driverLoop(prefix, tcSet, cBucket):
+	# print(tcSet)
 	# for i in range(len(pList)):
-	# currPre = pList[i]
+	prefix = 'fastqs/' + prefix
 	driver_out = engine(prefix, tcSet, cBucket)
 	files_to_move = driver_out[0]
 	results_files = driver_out[1]
@@ -187,21 +184,28 @@ def driverLoop(prefix, tcSet, cBucket):
   
 global dest_bucket
 
-# cellFile = getTCellFile("/path/to/cellNamesFile.csv")
 cellSet = getCellSet(sys.argv[2])
 dest_bucket = 'chimerCellFiles/'
 
-# inputFile = sys.argv[1]
+inputFile = sys.argv[1]
 
-# prefixList = []
-# with open(inputFile) as f:
-# 	input_rdr = csv.reader(f)
-# 	for item in input_rdr:
-# 		prefixList.append(item[0])
+prefixList = []
+with open(inputFile) as f:
+	input_rdr = csv.reader(f)
+	for item in input_rdr:
+		prefixList.append(item[0])
 
 print(" ")
 print("STARTING")
-driverLoop('fastqs/'+sys.argv[1], cellSet, 'czbiohub-seqbot')
+procs = []
+for prefix in prefixList:
+	p = multiprocessing.Process(target=driverLoop, args=(prefix, cellSet, 'czbiohub-seqbot',))
+	procs.append(p)
+	p.start()
+for p in procs:
+	p.join()
+
+# driverLoop(prefixList, cellSet, 'czbiohub-seqbot')
 print("done!")
 
 #////////////////////////////////////////////////////////////////////
