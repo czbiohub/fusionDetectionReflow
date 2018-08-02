@@ -126,7 +126,8 @@ def engine(myPrefix, myTCellSet, myBucket):
 	res_files = []
 	for query_dir in get_files(bucket=myBucket, prefix=myPrefix):
 		dir_split = query_dir.split("/")
-		if len(dir_split) > 3:
+		if len(dir_split) == 5:
+			# print(dir_split)
 			query_cell_extra = dir_split[3]
 			query_cell_extra_split = query_cell_extra.split("_")
 			query_cell = query_cell_extra_split[0] + '_' + query_cell_extra_split[1]
