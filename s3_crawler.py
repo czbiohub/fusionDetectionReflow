@@ -18,10 +18,67 @@
 # s3_util library was written by James (THANK YOU)
 #////////////////////////////////////////////////////////////////////
 #////////////////////////////////////////////////////////////////////
-import s3_util
+# import s3_util
 import os
 import csv
 import sys
+import multiprocessing
+import boto3
+import botocore.exceptions
+
+
+def prefix_gen(bucket, prefix, fn=None):
+    """Generic generator of fn(result) from an S3 paginator"""
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects')
+
+    response_iterator = paginator.paginate(
+            Bucket=bucket, Prefix=prefix
+    )
+
+    for result in response_iterator:
+        if 'Contents' in result:
+            yield from (fn(r) for r in result['Contents'])
+
+# changes in here -- LJH
+def get_files(bucket=None, prefix=None):
+    # """Generator of keys for a given S3 prefix"""
+    yield from prefix_gen(bucket, prefix, lambda r: r['Key'])
+
+
+def copy_file(k):
+    key, new_key = k
+    try:
+        s3c.head_object(Bucket=new_bucket, Key=new_key)
+    except botocore.exceptions.ClientError:
+        s3c.copy(CopySource={'Bucket': bucket, 'Key': key},
+                 Bucket=new_bucket,
+                 Key=new_key)
+
+
+def copy_files(src_list, dest_list, b, nb, n_proc=16):
+    """
+    Copy a list of files from src_list to dest_list.
+    b - original bucket
+    nb - destination bucket
+    """
+
+    global s3c
+    s3c = boto3.client('s3')
+
+    global bucket
+    bucket = b
+    global new_bucket
+    new_bucket = nb
+
+    try:
+        p = multiprocessing.Pool(processes=n_proc)
+        p.map(copy_file, zip(src_list, dest_list), chunksize=100)
+    finally:
+        p.close()
+        p.join()
+
+
 
 #////////////////////////////////////////////////////////////////////
 # getCellFile()
@@ -72,9 +129,8 @@ def getCellSet(myFile):
 def engine(myPrefix, myTCellSet, myBucket):
 	f_to_move = []
 	res_files = []
-	for query_dir in s3_util.get_files(bucket=myBucket, prefix=myPrefix):
+	for query_dir in get_files(bucket=myBucket, prefix=myPrefix):
 		dir_split = query_dir.split("/")
-		#print(dir_split)
 		query_cell_extra = dir_split[3]
 		query_cell_extra_split = query_cell_extra.split("_")
 		query_cell = query_cell_extra_split[0] + '_' + query_cell_extra_split[1]
@@ -96,7 +152,7 @@ def engine(myPrefix, myTCellSet, myBucket):
 #	Peforms the actual move, from one s3 bucket to another
 #////////////////////////////////////////////////////////////////////
 def moveFiles(mv, rs, source_prefix):
-	s3_util.copy_files(mv, rs, source_prefix, sys.argv[3], n_proc=16)
+	copy_files(mv, rs, source_prefix, sys.argv[3], n_proc=64)
 
 #////////////////////////////////////////////////////////////////////
 # driverLoop()
@@ -132,7 +188,7 @@ def driverLoop(prefix, tcSet, cBucket):
 global dest_bucket
 
 # cellFile = getTCellFile("/path/to/cellNamesFile.csv")
-cellSet = getTCellSet(sys.argv[2])
+cellSet = getCellSet(sys.argv[2])
 dest_bucket = 'chimerCellFiles/'
 
 # inputFile = sys.argv[1]
@@ -145,7 +201,7 @@ dest_bucket = 'chimerCellFiles/'
 
 print(" ")
 print("STARTING")
-driverLoop(sys.argv[1], tCellSet, 'czbiohub-seqbot')
+driverLoop('fastqs/'+sys.argv[1], cellSet, 'czbiohub-seqbot')
 print("done!")
 
 #////////////////////////////////////////////////////////////////////
