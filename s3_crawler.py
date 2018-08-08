@@ -198,13 +198,14 @@ with open(inputFile) as f:
 
 print(" ")
 print("STARTING")
-procs = []
+#procs = []
 for prefix in prefixList:
-	p = multiprocessing.Process(target=driverLoop, args=(prefix, cellSet, 'czbiohub-seqbot',))
-	procs.append(p)
-	p.start()
-for p in procs:
-	p.join()
+	driverLoop(prefix, cellSet, 'czbiohub-seqbot')
+	#p = multiprocessing.Process(target=driverLoop, args=(prefix, cellSet, 'czbiohub-seqbot',))
+	#procs.append(p)
+	#p.start()
+#for p in procs:
+	#p.join()
 
 # driverLoop(prefixList, cellSet, 'czbiohub-seqbot')
 print("done!")
