@@ -186,7 +186,7 @@ def driverLoop(prefix, tcSet, cBucket):
 global dest_bucket
 
 cellSet = getCellSet(sys.argv[2])
-dest_bucket = 'chimerCellFiles/'
+dest_bucket = sys.argv[3] + '/'
 
 inputFile = sys.argv[1]
 
