@@ -76,5 +76,5 @@ val blastDirs = [blastn(blastdb, n, cellName, f) | (blastdb, cellName) <- zip(bl
 val blastBuckets = [dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "blastn"], "/")) | blastDir <- blastDirs]
 
 // Save chimeric pairs to results_bucket/chimerPairFiles.
-@requires(cpu := 8, mem := 32*GiB, disk := 200*GiB)
+@requires(cpu := 20, mem := 64*GiB, disk := 200*GiB)
 val Main = blastBuckets ~> dirs.Copy(findChimericPairs(dir(strings.Join(["s3:/", results_bucket, "blastn"], "/"))), strings.Join(["s3:/", results_bucket, "chimerPairFiles"], "/"))
