@@ -134,8 +134,9 @@ def engine(myPrefix, myTCellSet, myBucket):
 			#print(query_cell)
 			if query_cell in myTCellSet:
 				f_to_move.append(query_dir)
-				myStr = dest_bucket + query_cell + '/' + dir_split[4]
+				myStr = dest_bucket + '/' + query_cell + '/' + dir_split[4]
 				res_files.append(myStr)
+				cellList.append(query_cell)
     
 	return f_to_move, res_files
 
@@ -173,6 +174,13 @@ def driverLoop(prefix, tcSet, cBucket):
 	moveFiles(files_to_move, results_files, cBucket)
 	# return
 
+def writeCSVfile(cellList):
+	with open("fusionBatch.csv", "w") as f:
+		f.write("-reid,results_bucket,cell,querySeqs\n")
+		for i, cell in enumerate(cellList):
+			f.write("{},{},{},{}\n".format(i,dest_bucket,cell,querySeqs))
+	print("finished writing runbatch file!")
+
 #////////////////////////////////////////////////////////////////////
 # main()
 # 
@@ -184,9 +192,11 @@ def driverLoop(prefix, tcSet, cBucket):
 #////////////////////////////////////////////////////////////////////
   
 global dest_bucket
+global querySeqs
+querySeqs = sys.argv[4]
 
 cellSet = getCellSet(sys.argv[2])
-dest_bucket = sys.argv[3] + '/'
+dest_bucket = sys.argv[3] + '/chimerCellFiles'
 
 inputFile = sys.argv[1]
 
@@ -196,18 +206,18 @@ with open(inputFile) as f:
 	for item in input_rdr:
 		prefixList.append(item[0])
 
+global cellList
+cellList = []
+
 print(" ")
 print("STARTING")
-#procs = []
 for prefix in prefixList:
 	driverLoop(prefix, cellSet, 'czbiohub-seqbot')
-	#p = multiprocessing.Process(target=driverLoop, args=(prefix, cellSet, 'czbiohub-seqbot',))
-	#procs.append(p)
-	#p.start()
-#for p in procs:
-	#p.join()
 
-# driverLoop(prefixList, cellSet, 'czbiohub-seqbot')
+print("finished moving files to destination bucket!")
+
+writeCSVfile(cellList)
+
 print("done!")
 
 #////////////////////////////////////////////////////////////////////
