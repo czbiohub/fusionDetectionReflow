@@ -1,0 +1,5 @@
+{
+  "program": "fusionPipeline.rf",
+  "runs_file": "fusionBatch.csv"
+}
+

@@ -22,59 +22,7 @@
 import os
 import csv
 import sys
-import multiprocessing
-import boto3
-import botocore.exceptions
-
-def prefix_gen(bucket, prefix, fn=None):
-    """Generic generator of fn(result) from an S3 paginator"""
-    client = boto3.client('s3')
-    paginator = client.get_paginator('list_objects')
-
-    response_iterator = paginator.paginate(
-            Bucket=bucket, Prefix=prefix
-    )
-
-    for result in response_iterator:
-        if 'Contents' in result:
-            yield from (fn(r) for r in result['Contents'])
-
-# changes in here -- LJH
-def get_files(bucket=None, prefix=None):
-    # """Generator of keys for a given S3 prefix"""
-    yield from prefix_gen(bucket, prefix, lambda r: r['Key'])
-
-def copy_file(k):
-    key, new_key = k
-    try:
-        s3c.head_object(Bucket=new_bucket, Key=new_key)
-    except botocore.exceptions.ClientError:
-        s3c.copy(CopySource={'Bucket': bucket, 'Key': key},
-                 Bucket=new_bucket,
-                 Key=new_key)
-
-def copy_files(src_list, dest_list, b, nb, n_proc=16):
-    """
-    Copy a list of files from src_list to dest_list.
-    b - original bucket
-    nb - destination bucket
-    """
-
-    global s3c
-    s3c = boto3.client('s3')
-
-    global bucket
-    bucket = b
-    global new_bucket
-    new_bucket = nb
-
-    try:
-        p = multiprocessing.Pool(processes=n_proc)
-        p.map(copy_file, zip(src_list, dest_list), chunksize=100)
-    finally:
-        p.close()
-        p.join()
-
+import s3_util
 #////////////////////////////////////////////////////////////////////
 # getCellFile()
 #	args: myPath -> raw os path to tCell local file of interest (.csv)
@@ -124,19 +72,17 @@ def getCellSet(myFile):
 def engine(myPrefix, myTCellSet, myBucket):
 	f_to_move = []
 	res_files = []
-	for query_dir in get_files(bucket=myBucket, prefix=myPrefix):
+	for query_dir in s3_util.get_files(bucket=myBucket, prefix=myPrefix):
 		dir_split = query_dir.split("/")
 		if len(dir_split) == 5:
-			# print(dir_split)
 			query_cell_extra = dir_split[3]
 			query_cell_extra_split = query_cell_extra.split("_")
 			query_cell = query_cell_extra_split[0] + '_' + query_cell_extra_split[1]
-			#print(query_cell)
 			if query_cell in myTCellSet:
 				f_to_move.append(query_dir)
-				myStr = dest_bucket + '/' + query_cell + '/' + dir_split[4]
+				myStr = 'chimer_Cell_Test' + '/' + query_cell + '/' + dir_split[4]
 				res_files.append(myStr)
-				cellList.append(query_cell)
+				cellList.add(query_cell)
     
 	return f_to_move, res_files
 
@@ -150,7 +96,7 @@ def engine(myPrefix, myTCellSet, myBucket):
 #	Peforms the actual move, from one s3 bucket to another
 #////////////////////////////////////////////////////////////////////
 def moveFiles(mv, rs, source_prefix):
-	copy_files(mv, rs, source_prefix, sys.argv[3], n_proc=64)
+	s3_util.copy_files(mv, rs, source_prefix, dest_bucket)
 
 #////////////////////////////////////////////////////////////////////
 # driverLoop()
@@ -163,8 +109,6 @@ def moveFiles(mv, rs, source_prefix):
 #	bucket, then calls moveFiles() to do the move. 
 #////////////////////////////////////////////////////////////////////
 def driverLoop(prefix, tcSet, cBucket):
-	# print(tcSet)
-	# for i in range(len(pList)):
 	prefix = 'fastqs/' + prefix
 	driver_out = engine(prefix, tcSet, cBucket)
 	files_to_move = driver_out[0]
@@ -178,7 +122,7 @@ def writeCSVfile(cellList):
 	with open("fusionBatch.csv", "w") as f:
 		f.write("-reid,results_bucket,cell,querySeqs\n")
 		for i, cell in enumerate(cellList):
-			f.write("{},{},{},{}\n".format(i,dest_bucket,cell,querySeqs))
+			f.write("{},{},{},{}\n".format(i, dest_bucket, cell, querySeqs))
 	print("finished writing runbatch file!")
 
 #////////////////////////////////////////////////////////////////////
@@ -188,31 +132,35 @@ def writeCSVfile(cellList):
 # 	getTCellSet() to define list of tCells to search for, then defines 
 # 	lists of s3 prefixes to search our three parent s3 buckets for. 
 # 	Then calls driverLoop to do all of the actual work. 
+# 	argv[1] = csv file with prefixes of machines to search for
+#	argv[2] = file of t-cells of interest
+#	argv[3] = destination bucket to save/move files to
+#	argv[4] = path (s3 or local) to file of query sequences for blast 
 #
 #////////////////////////////////////////////////////////////////////
-  
+
+
+prefixFile = sys.argv[1]
+cellSet = getCellSet(sys.argv[2])
+
 global dest_bucket
+dest_bucket = sys.argv[3]
 global querySeqs
 querySeqs = sys.argv[4]
 
-cellSet = getCellSet(sys.argv[2])
-dest_bucket = sys.argv[3] + '/chimerCellFiles'
-
-inputFile = sys.argv[1]
-
-prefixList = []
-with open(inputFile) as f:
-	input_rdr = csv.reader(f)
-	for item in input_rdr:
-		prefixList.append(item[0])
-
 global cellList
-cellList = []
+cellList = set()
 
 print(" ")
 print("STARTING")
-for prefix in prefixList:
-	driverLoop(prefix, cellSet, 'czbiohub-seqbot')
+
+with open(prefixFile) as f:
+	input_rdr = csv.reader(f)
+	for item in input_rdr:
+		try:
+			driverLoop(item[0], cellSet, 'czbiohub-seqbot')
+		except:
+			pass
 
 print("finished moving files to destination bucket!")
 

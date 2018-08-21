@@ -39,7 +39,7 @@ func makeBlastDB(fasta dir) dir =
 	"}
 
 // Runs blastn for each db in the given directory. Saves the results under cell name and gene.
-func blastn(queryName, cellName string, querySeq file) dir = {
+func blastn(queryName, cellName string, querySeq file, blastdbDir dir) dir = {
 	val [gene] = strings.Split(queryName, "_")
 	exec(image := "biocontainers/blast") (output dir) {"
 		mkdir {{output}}/{{cellName}}
@@ -64,14 +64,14 @@ func findChimericPairs(cellBlast dir) dir =
 // val cellNames = [cellName | (cellName, _) <- cellGroups]
 
 // Get fastq directories for each cell by unzipping the compressed files.
-val fastqDirs = [gunzip(cellName, cellDir) | (cellName, cellDir) <- cellGroups]
+// val fastqDirs = [gunzip(cellName, cellDir) | (cellName, cellDir) <- cellGroups]
 
-val cellDir = dir(strings.Join(["s3:/", results_bucket, cell], "/"))
+val cellDir = dir(strings.Join(["s3:/", results_bucket, "chimerCellTest", cell], "/"))
 val fastqDir = gunzip(cell, cellDir)
 val fastaDir = convertFastq(fastqDir)
 val blastdbDir = makeBlastDB(fastaDir)
-val blastDir = [blastn(n, f) | (n, f) <- map(dir(querySeqs))]
-val blastBucket = dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "blastn"], "/"))
+val blastDirs = [blastn(n, cell, f, blastdbDir) | (n, f) <- map(dir(querySeqs))]
+val blastBucket = [dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "blastn"], "/")) | blastDir <- blastDirs]
 
 // // Get fasta directories for each cell by converting each fastq directory.
 // val fastaDirs = [convertFastq(fastqDir) | fastqDir <- fastqDirs]
@@ -81,8 +81,9 @@ val blastBucket = dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "bla
 
 // // Run blastn for each blastdb directory and save the results to results_bucket/blastn. Uses the parameter folder querySeqs.
 // val blastDirs = [blastn(blastdb, n, cellName, f) | (blastdb, cellName) <- zip(blastdbDirs, cellNames), (n, f) <- map(dir(querySeqs))]
-val blastBuckets = [dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "blastn"], "/")) | blastDir <- blastDirs]
+// val blastBuckets = [dirs.Copy(blastDir, strings.Join(["s3:/", results_bucket, "blastn"], "/")) | blastDir <- blastDirs]
 
 // Save chimeric pairs to results_bucket/chimerPairFiles.
 @requires(cpu := 20, mem := 64*GiB, disk := 200*GiB)
-val Main = blastBuckets ~> dirs.Copy(findChimericPairs(dir(strings.Join(["s3:/", results_bucket, "blastn"], "/"))), strings.Join(["s3:/", results_bucket, "chimerPairFiles"], "/"))
+// val Main = blastBuckets ~> dirs.Copy(findChimericPairs(dir(strings.Join(["s3:/", results_bucket, "blastn"], "/"))), strings.Join(["s3:/", results_bucket, "chimerPairFiles"], "/"))
+val Main = blastBucket

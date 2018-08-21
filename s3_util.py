@@ -28,16 +28,23 @@ def prefix_gen(bucket, prefix, fn=None):
 
     for result in response_iterator:
         if 'Contents' in result:
+            # for r in result['Contents']:
+            #     yield fn(r)
             yield from (fn(r) for r in result['Contents'])
 
 # changes in here -- LJH
 def get_files(bucket=None, prefix=None):
     """Generator of keys for a given S3 prefix"""
+    # for bar in prefix_gen(bucket, prefix, lambda r: r['Key']):
+    #     yield bar
     yield from prefix_gen(bucket, prefix, lambda r: r['Key'])
 
 
 def get_size(bucket='czbiohub-seqbot', prefix=None):
     """Generator of (key,size) for a given S3 prefix"""
+    # for bar in prefix_gen(bucket, prefix, lambda r: (r['Key'], r['Size'])):
+    #     yield bar
+
     yield from prefix_gen(bucket, prefix, lambda r: (r['Key'], r['Size']))
 
 
@@ -109,36 +116,15 @@ def copy_files(src_list, dest_list, b, nb, n_proc=16):
     global new_bucket
     new_bucket = nb
 
-    try:
-        p = multiprocessing.Pool(processes=n_proc)
-        p.map(copy_file, zip(src_list, dest_list), chunksize=100)
-    finally:
-        p.close()
-        p.join()
+    for i in range(len(src_list)):
+        copy_file((src_list[i], dest_list[i]))
+    # try:
+    #     p = multiprocessing.Pool(processes=n_proc)
+    #     p.map(copy_file, zip(src_list, dest_list))
+    # finally:
+    #     p.close()
+    #     p.join()
 
-
-def remove_file(k):
-    s3c.delete_object(Bucket=bucket, Key=k)
-
-
-def remove_files(file_list, *, b, really=False, n_proc=16):
-    """Remove a list of file keys from S3"""
-
-    assert really
-
-    print("Removing {} files!".format(len(file_list)))
-
-    global s3c
-    s3c = boto3.client('s3')
-    global bucket
-    bucket = b
-
-    try:
-        p = multiprocessing.Pool(processes=n_proc)
-        p.map(remove_file, file_list, chunksize=100)
-    finally:
-        p.close()
-        p.join()
 
 #////////////////////////////////////////////////////////////////////
 #////////////////////////////////////////////////////////////////////

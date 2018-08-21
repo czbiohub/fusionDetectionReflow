@@ -1,0 +1,17 @@
+param (
+	results_bucket string
+	pair_script = file("./findChimericReads.py")
+)
+
+val dirs = make("$/dirs")
+val strings = make("$/strings")
+
+// Finds all chimeric pairs for all cells in the given directory.
+func findChimericPairs(cellBlast dir) dir =
+	exec(image := "python") (output dir) {"
+		python {{pair_script}} {{cellBlast}} {{output}}
+	"}
+
+val blastDir = dir(strings.Join(["s3:/", results_bucket, "blastn"], "/"))
+@requires(cpu := 20, mem := 64*GiB, disk := 200*GiB)
+val Main = dirs.Copy(findChimericPairs(blastDir), strings.Join(["s3:/", results_bucket, "chimerPairFiles"], "/"))
